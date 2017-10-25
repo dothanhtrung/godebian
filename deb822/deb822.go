@@ -6,51 +6,106 @@ package deb822
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"os"
 	"regexp"
 	"strings"
 )
 
 /*
- * Parse the whole file and return array of key-value
+ * Find section by key-value
  */
-func Parse(pathfile string) []map[string]string {
-	var blocks []map[string]string
+func find(pathfile, skey, svalue string, limit uint) ([]map[string]string, error) {
+	var results []map[string]string
 
 	file, err := os.Open(pathfile)
 	if err != nil {
-		fmt.Println(err)
-		return blocks
+		return results, err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
-	block := make(map[string]string)
+	section := make(map[string]string)
 	key, value := "", ""
+	found, ignore := false, false
+	var count uint
 	for scanner.Scan() {
 		line := scanner.Text()
-		key_match, _ := regexp.MatchString("^\\S*:.*", line)
-		if key_match {
-			kv := strings.Split(line, ":")
-			key, value = kv[0], kv[1]
+		if !ignore {
+			keyMatch, _ := regexp.MatchString("^\\S*:.*", line)
+			if keyMatch {
+				if (key == skey || skey == "") && (value == svalue || svalue == "") {
+					found = true
+				} else if key != "" && key == skey && value != svalue {
+					ignore = true
+				}
+
+				kv := strings.Split(line, ":")
+				key = strings.TrimSpace(kv[0])
+				value = strings.TrimSpace(kv[1])
+
+			} else {
+				valueMatch, _ := regexp.MatchString("^\\s+\\S*", line)
+				if valueMatch {
+					if value != "" {
+						value += "\n"
+					}
+					value += strings.TrimSpace(line)
+				}
+			}
+			section[key] = value
 		}
 
-		value_match, _ := regexp.MatchString("^\\s+\\S*", line)
-		if value_match {
-			value += line
-		}
-		block[key] = value
+		// Break between sections
+		breakMatch, _ := regexp.MatchString("^\\s*$", line)
+		if breakMatch {
+			if found {
+				results = append(results, section)
+				count += 1
+				found = false
+				if limit > 0 && count >= limit {
+					break
+				}
+			}
 
-		break_match, _ := regexp.MatchString("^\\s*$", line)
-		if break_match {
-			blocks = append(blocks, block)
-			block = make(map[string]string)
+			ignore = false
+			section = make(map[string]string)
 			key = ""
 			value = ""
 		}
 	}
 
-	return blocks
+	if len(results) == 0 {
+		return results, errors.New("not found")
+	}
+
+	return results, nil
+}
+
+/*
+ * Find a number of sections contain wanted key-value
+ */
+func Find(pathfile, skey, svalue string, limit uint) ([]map[string]string, error) {
+	return find(pathfile, skey, svalue, limit)
+}
+
+/*
+ * Find the first section contains wanted key-value
+ */
+func FindOne(pathfile, skey, svalue string) (map[string]string, error) {
+	result := make(map[string]string)
+	results, err := find(pathfile, skey, svalue, 1)
+	if err == nil {
+		result = results[0]
+	}
+
+	return result, err
+}
+
+/*
+ * Find all the sections contain wanted key-value
+ */
+func FindAll(pathfile, skey, svalue string) ([]map[string]string, error) {
+	return find(pathfile, skey, svalue, 0)
 }
