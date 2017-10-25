@@ -32,47 +32,56 @@ func find(pathfile, skey, svalue string, limit uint) ([]map[string]string, error
 	var count uint
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !ignore {
-			keyMatch, _ := regexp.MatchString("^\\S*:.*", line)
-			if keyMatch {
-				if (key == skey || skey == "") && (value == svalue || svalue == "") {
-					found = true
-				} else if key != "" && key == skey && value != svalue {
-					ignore = true
-				}
-
-				kv := strings.Split(line, ":")
-				key = strings.TrimSpace(kv[0])
-				value = strings.TrimSpace(kv[1])
-
-			} else {
-				valueMatch, _ := regexp.MatchString("^\\s+\\S*", line)
-				if valueMatch {
-					if value != "" {
-						value += "\n"
-					}
-					value += strings.TrimSpace(line)
-				}
+		// Break between sections
+		if ignore {
+			breakMatch, _ := regexp.MatchString("^\\s*$", line)
+			if breakMatch {
+				ignore = false
 			}
-			section[key] = value
+			continue
 		}
 
-		// Break between sections
-		breakMatch, _ := regexp.MatchString("^\\s*$", line)
-		if breakMatch {
-			if found {
-				results = append(results, section)
-				count += 1
-				found = false
-				if limit > 0 && count >= limit {
-					break
-				}
+		keyMatch, _ := regexp.MatchString("^\\S*:.*", line)
+		if keyMatch {
+			if (key == skey || skey == "") && (value == svalue || svalue == "") {
+				found = true
+			} else if key != "" && key == skey && value != svalue {
+				ignore = true
+				section = make(map[string]string)
+				key = ""
+				value = ""
+				continue
 			}
 
-			ignore = false
-			section = make(map[string]string)
-			key = ""
-			value = ""
+			section[key] = value
+			kv := strings.Split(line, ":")
+			key = strings.TrimSpace(kv[0])
+			value = strings.TrimSpace(kv[1])
+			section[key] = value
+		} else {
+			valueMatch, _ := regexp.MatchString("^\\s+\\S*", line)
+			if valueMatch {
+				if value != "" {
+					value += "\n"
+				}
+				value += strings.TrimSpace(line)
+			} else {
+				breakMatch, _ := regexp.MatchString("^\\s*$", line)
+				if breakMatch {
+					if found {
+						results = append(results, section)
+						count++
+						found = false
+						if limit > 0 && count >= limit {
+							break
+						}
+					}
+
+					section = make(map[string]string)
+					key = ""
+					value = ""
+				}
+			}
 		}
 	}
 
