@@ -59,9 +59,10 @@ func find(pathfile, skey, svalue string, limit uint) ([]map[string]string, error
 					ignore = true
 					section = make(map[string]string)
 					key, value = "", ""
+					continue
 				}
 			}
-			kv := strings.Split(line, ":")
+			kv := strings.SplitN(line, ":", 2)
 			key = strings.TrimSpace(kv[0])
 			value = strings.TrimSpace(kv[1])
 			continue
