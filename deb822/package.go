@@ -27,16 +27,19 @@ type Package struct {
 	Version          string
 
 	Architecture []string
-	Conflicts    []string
-	Replaces     []string
+	Provides     []string
 
 	Maintainer map[string]string
 
 	BuildDepends    []map[string]string
+	Breaks          []map[string]string
 	ChecksumsSha256 []map[string]string
+	Conflicts       []map[string]string
 	Depends         []map[string]string
 	Files           []map[string]string
 	PreDepends      []map[string]string
+	Replaces        []map[string]string
+	Suggests        []map[string]string
 	Uploaders       []map[string]string
 }
 
@@ -61,14 +64,9 @@ func Deb822ToPackage(section map[string]string) Package {
 
 	pkg.Architecture = strings.Fields(section["Architecture"])
 
-	conflicts := strings.Split(section["Conflicts"], ",")
-	for _, conflict := range conflicts {
-		pkg.Conflicts = append(pkg.Conflicts, conflict)
-	}
-
-	replaces := strings.Split(section["Replaces"], ",")
-	for _, replace := range replaces {
-		pkg.Replaces = append(pkg.Replaces, replace)
+	provides := strings.Split(section["Provides"], ",")
+	for _, provide := range provides {
+		pkg.Provides = append(pkg.Provides, provide)
 	}
 
 	maintainer := strings.Split(section["Maintainer"], "<")
@@ -89,6 +87,17 @@ func Deb822ToPackage(section map[string]string) Package {
 		}
 	}
 
+	breaks := strings.Split(section["Breaks"], ",")
+	for _, brk := range breaks {
+		namecondition := strings.Split(brk, "(")
+		if len(namecondition) > 1 {
+			packagename := strings.TrimSpace(namecondition[0])
+			condition := strings.TrimSpace(strings.Split(namecondition[1], ")")[0])
+			pkg.Breaks = append(pkg.Breaks, map[string]string{"Package": packagename,
+				"Condition": condition})
+		}
+	}
+
 	sha256s := strings.Split(section["Checksums-Sha256"], "\n")
 	for _, sha256 := range sha256s {
 		ssn := strings.Fields(sha256)
@@ -96,6 +105,17 @@ func Deb822ToPackage(section map[string]string) Package {
 			pkg.ChecksumsSha256 = append(pkg.ChecksumsSha256, map[string]string{"sha256": ssn[0],
 				"size": ssn[1],
 				"name": ssn[2]})
+		}
+	}
+
+	conflicts := strings.Split(section["Conflicts"], ",")
+	for _, conflict := range conflicts {
+		namecondition := strings.Split(conflict, "(")
+		if len(namecondition) > 1 {
+			packagename := strings.TrimSpace(namecondition[0])
+			condition := strings.TrimSpace(strings.Split(namecondition[1], ")")[0])
+			pkg.Conflicts = append(pkg.Conflicts, map[string]string{"Package": packagename,
+				"Condition": condition})
 		}
 	}
 
@@ -127,6 +147,28 @@ func Deb822ToPackage(section map[string]string) Package {
 			packagename := strings.TrimSpace(namecondition[0])
 			condition := strings.TrimSpace(strings.Split(namecondition[1], ")")[0])
 			pkg.PreDepends = append(pkg.PreDepends, map[string]string{"Package": packagename,
+				"Condition": condition})
+		}
+	}
+
+	replaces := strings.Split(section["Replaces"], ",")
+	for _, replace := range replaces {
+		namecondition := strings.Split(replace, "(")
+		if len(namecondition) > 1 {
+			packagename := strings.TrimSpace(namecondition[0])
+			condition := strings.TrimSpace(strings.Split(namecondition[1], ")")[0])
+			pkg.Replaces = append(pkg.Replaces, map[string]string{"Package": packagename,
+				"Condition": condition})
+		}
+	}
+
+	suggests := strings.Split(section["Suggests"], ",")
+	for _, suggest := range suggests {
+		namecondition := strings.Split(suggest, "(")
+		if len(namecondition) > 1 {
+			packagename := strings.TrimSpace(namecondition[0])
+			condition := strings.TrimSpace(strings.Split(namecondition[1], ")")[0])
+			pkg.Suggests = append(pkg.Suggests, map[string]string{"Package": packagename,
 				"Condition": condition})
 		}
 	}
