@@ -5,7 +5,7 @@
 package control
 
 import (
-	"github.com/kimtinh/godebian/deb822"
+	"gitlab.com/kimtinh/godebian/deb822"
 )
 
 type Control struct {

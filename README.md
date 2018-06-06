@@ -3,7 +3,7 @@
 import (
     "fmt"
 
-    "github.com/kimtinh/godebian/deb822"
+    "gitlab.com/kimtinh/godebian/deb822"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 
 # control
 ```go
-import "github.com/kimtinh/godebian/control"
+import "gitlab.com/kimtinh/godebian/control"
 
 func main() {
     // Read debian/control
